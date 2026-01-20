@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .qr-codes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .qr-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px;
+    }
+    .qr-codes canvas {
+      border: 10px solid #ccc;
+    }
+    #actions {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>QR Code Generator</h1>
+  <form id="qrForm">
+    <label>
+      Start Number:
+      <input type="number" id="startNumber">
+    </label>
+    <label>
+      End Number:
+      <input type="number" id="endNumber">
+    </label>
+    <label>
+      Or Custom Values (comma-separated):
+      <input type="text" id="customValues">
+    </label>
+    <label>
+      Bulk Input (one per line):
+      <textarea id="bulkInput" rows="5" cols="30" placeholder="Paste your column here or type and press Enter"></textarea>
+    </label>
+    <button type="button" onclick="generateQRCodes()">Generate QR Codes</button>
+  </form>
+
+  <div id="actions">
+    <button id="downloadAll" style="display: none;" onclick="downloadAllQRCodes()">Download All as ZIP</button>
+  </div>
+
+  <div class="qr-codes" id="qrCodesContainer"></div>
+
+  <script>
+    function generateQRCodes() {
+      const container = document.getElementById('qrCodesContainer');
+      const startNumber = parseInt(document.getElementById('startNumber').value);
+      const endNumber = parseInt(document.getElementById('endNumber').value);
+      const customValues = document.getElementById('customValues').value.split(',').map(v => v.trim());
+      const bulkInput = document.getElementById('bulkInput').value.split('\n').map(v => v.trim()).filter(v => v);
+
+      container.innerHTML = '';
+      const qrValues = [];
+
+      // Adiciona valores conforme preenchidos nos campos
+      if (customValues[0]) {
+        qrValues.push(...customValues);
+      }
+      if (!isNaN(startNumber) && !isNaN(endNumber) && startNumber <= endNumber) {
+        for (let i = startNumber; i <= endNumber; i++) {
+          qrValues.push(i.toString());
+        }
+      }
+      if (bulkInput.length > 0) {
+        qrValues.push(...bulkInput);
+      }
+
+      if (qrValues.length === 0) {
+        alert('Please provide data in one of the input fields.');
+        return;
+      }
+
+      qrValues.forEach(value => {
+        const qrItem = document.createElement('div');
+        qrItem.className = 'qr-item';
+
+        const canvas = document.createElement('canvas');
+        QRCode.toCanvas(canvas, value, { width: 200, margin: 2 }, function (error) {
+          if (error) console.error(error);
+        });
+
+        const label = document.createElement('p');
+        label.textContent = value;
+        label.style.marginTop = '10px';
+        label.style.fontSize = '14px';
+        label.style.textAlign = 'center';
+
+        qrItem.appendChild(canvas);
+        qrItem.appendChild(label);
+        container.appendChild(qrItem);
+      });
+
+      document.getElementById('downloadAll').style.display = 'inline-block';
+    }
+
+    async function downloadAllQRCodes() {
+      const zip = new JSZip();
+      const qrItems = document.querySelectorAll('.qr-item');
+
+      qrItems.forEach(qrItem => {
+        const canvas = qrItem.querySelector('canvas');
+        const label = qrItem.querySelector('p').textContent; // O texto do QR Code
+        const sanitizedFileName = label.replace(/[^a-z0-9]/gi, '_'); // Sanitiza o nome do arquivo
+        const dataURL = canvas.toDataURL();
+        const base64Data = dataURL.split(',')[1];
+        zip.file(`${sanitizedFileName}.jpg`, base64Data, { base64: true });
+      });
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, 'All_QRCodes.zip');
+    }
+  </script>
+  <title>By Wagner L. Rodrigues</title>
+</body>
+</html>
