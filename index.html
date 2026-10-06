@@ -1,133 +1,496 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Code Generator</title>
+  <title>Gerador de QR Codes em Lote</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #4f46e5;
+      --primary-dark: #4338ca;
+      --primary-soft: #eef2ff;
+      --success: #059669;
+      --danger: #dc2626;
+      --radius: 14px;
     }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      padding: 36px 20px 64px;
+      text-align: center;
+    }
+    header h1 { margin: 0 0 8px; font-size: 1.9rem; }
+    header p { margin: 0 auto; max-width: 620px; opacity: .92; }
+    main {
+      max-width: 960px;
+      margin: -40px auto 40px;
+      padding: 0 16px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 6px 24px rgba(15, 23, 42, .08);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h2 { margin: 0 0 4px; font-size: 1.15rem; }
+    .card .sub { margin: 0 0 16px; color: var(--muted); font-size: .92rem; }
+
+    /* Abas */
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .tab {
+      border: 2px solid var(--border);
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px 10px;
+      cursor: pointer;
+      text-align: center;
+      font: inherit;
+      color: var(--text);
+      transition: .15s;
+    }
+    .tab:hover { border-color: #c7d2fe; }
+    .tab .ico { font-size: 1.4rem; display: block; }
+    .tab .t { font-weight: 600; display: block; font-size: .95rem; }
+    .tab .d { font-size: .78rem; color: var(--muted); display: block; }
+    .tab.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+    @media (max-width: 600px) {
+      .tabs { grid-template-columns: 1fr; }
+      .tab { display: flex; align-items: center; gap: 12px; text-align: left; }
+      .tab .ico { margin: 0; }
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .howto {
+      background: var(--primary-soft);
+      border-left: 4px solid var(--primary);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: .9rem;
+      margin-bottom: 16px;
+    }
+    .howto strong { color: var(--primary-dark); }
+    .howto ol { margin: 6px 0 0 18px; padding: 0; }
+    .howto code {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 1px 6px;
+      font-size: .85rem;
+    }
+
+    label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: 4px; }
+    .hint { display: block; font-weight: 400; color: var(--muted); font-size: .8rem; margin-top: 3px; }
+    input[type="number"], input[type="text"], textarea, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font: inherit;
+      background: #fff;
+      color: var(--text);
+    }
+    textarea { resize: vertical; min-height: 130px; font-family: Consolas, monospace; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, .15);
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .row.three { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 600px) { .row, .row.three { grid-template-columns: 1fr; } }
+    .field { margin-bottom: 14px; }
+
+    details.opts { margin-top: 6px; }
+    details.opts summary {
+      cursor: pointer; font-weight: 600; font-size: .9rem; color: var(--primary-dark);
+      padding: 6px 0;
+    }
+    .opts-body { padding-top: 10px; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    button.btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { filter: brightness(.92); }
+    .btn-ghost { background: #fff; color: var(--text); border: 1.5px solid var(--border) !important; }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: .9rem;
+      display: none;
+    }
+    .msg.error { display: block; background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+    .msg.info { display: block; background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
+
+    /* Resultados */
+    .result-head {
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+    }
+    .result-head h2 { margin: 0; }
+    .count { color: var(--muted); font-size: .9rem; }
     .qr-codes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px;
     }
     .qr-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      background: #fff;
     }
-    .qr-codes canvas {
-      border: 10px solid #ccc;
+    .qr-item canvas {
+      max-width: 100%;
+      height: auto !important;
+      border-radius: 6px;
     }
-    #actions {
-      margin-top: 20px;
+    .qr-item .label {
+      margin: 8px 0;
+      font-size: .85rem;
+      font-weight: 600;
+      word-break: break-all;
     }
+    .qr-item button {
+      border: 1.5px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    .qr-item button:hover { background: var(--primary-soft); border-color: var(--primary); }
+    .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+
+    footer { text-align: center; color: var(--muted); font-size: .85rem; padding: 0 16px 30px; }
   </style>
 </head>
 <body>
-  <h1>QR Code Generator</h1>
-  <form id="qrForm">
-    <label>
-      Start Number:
-      <input type="number" id="startNumber">
-    </label>
-    <label>
-      End Number:
-      <input type="number" id="endNumber">
-    </label>
-    <label>
-      Or Custom Values (comma-separated):
-      <input type="text" id="customValues">
-    </label>
-    <label>
-      Bulk Input (one per line):
-      <textarea id="bulkInput" rows="5" cols="30" placeholder="Paste your column here or type and press Enter"></textarea>
-    </label>
-    <button type="button" onclick="generateQRCodes()">Generate QR Codes</button>
-  </form>
+  <header>
+    <h1>📱 Gerador de QR Codes em Lote</h1>
+    <p>Crie vários QR Codes de uma só vez e baixe tudo em um arquivo ZIP. Escolha abaixo o modo que combina com o que você precisa.</p>
+  </header>
 
-  <div id="actions">
-    <button id="downloadAll" style="display: none;" onclick="downloadAllQRCodes()">Download All as ZIP</button>
-  </div>
+  <main>
+    <section class="card">
+      <h2>1. Escolha o modo de geração</h2>
+      <p class="sub">Cada modo cria os QR Codes de um jeito diferente. Clique para ver como usar.</p>
 
-  <div class="qr-codes" id="qrCodesContainer"></div>
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" data-mode="sequencia" role="tab">
+          <span class="ico">🔢</span>
+          <span><span class="t">Sequência numérica</span><span class="d">Ex.: de 1 até 50</span></span>
+        </button>
+        <button type="button" class="tab" data-mode="personalizado" role="tab">
+          <span class="ico">✏️</span>
+          <span><span class="t">Valores personalizados</span><span class="d">Separados por vírgula</span></span>
+        </button>
+        <button type="button" class="tab" data-mode="lista" role="tab">
+          <span class="ico">📋</span>
+          <span><span class="t">Lista (colar coluna)</span><span class="d">Um valor por linha</span></span>
+        </button>
+      </div>
+
+      <!-- Modo: Sequência -->
+      <div class="panel active" id="panel-sequencia">
+        <div class="howto">
+          <strong>Como usar:</strong> ideal para numerar itens como carteirinhas, patrimônios, cadeiras ou salas.
+          <ol>
+            <li>Informe o <b>primeiro número</b> e o <b>último número</b>.</li>
+            <li>(Opcional) Coloque um <b>prefixo</b>, como <code>SALA-</code>.</li>
+            <li>Clique em <b>Gerar QR Codes</b>.</li>
+          </ol>
+          Exemplo: início <code>1</code>, fim <code>3</code> e prefixo <code>SALA-</code> geram <code>SALA-1</code>, <code>SALA-2</code> e <code>SALA-3</code>.
+        </div>
+        <div class="row three">
+          <div class="field">
+            <label for="startNumber">Primeiro número</label>
+            <input type="number" id="startNumber" placeholder="Ex.: 1">
+          </div>
+          <div class="field">
+            <label for="endNumber">Último número</label>
+            <input type="number" id="endNumber" placeholder="Ex.: 50">
+          </div>
+          <div class="field">
+            <label for="prefix">Prefixo (opcional)</label>
+            <input type="text" id="prefix" placeholder="Ex.: SALA-">
+          </div>
+        </div>
+      </div>
+
+      <!-- Modo: Personalizado -->
+      <div class="panel" id="panel-personalizado">
+        <div class="howto">
+          <strong>Como usar:</strong> ideal para poucos textos, links ou códigos diferentes entre si.
+          <ol>
+            <li>Digite os valores no campo abaixo, <b>separando cada um com vírgula</b>.</li>
+            <li>Clique em <b>Gerar QR Codes</b>.</li>
+          </ol>
+          Exemplo: <code>Maria, João, https://meusite.com.br</code> gera 3 QR Codes.
+        </div>
+        <div class="field">
+          <label for="customValues">Valores separados por vírgula</label>
+          <input type="text" id="customValues" placeholder="Ex.: Maria, João, https://meusite.com.br">
+          <span class="hint">Dica: se o seu texto tiver vírgula, use o modo "Lista" no lugar deste.</span>
+        </div>
+      </div>
+
+      <!-- Modo: Lista -->
+      <div class="panel" id="panel-lista">
+        <div class="howto">
+          <strong>Como usar:</strong> ideal para listas grandes vindas do Excel, Google Planilhas ou Word.
+          <ol>
+            <li>Copie uma <b>coluna inteira</b> da sua planilha (Ctrl + C).</li>
+            <li>Cole no campo abaixo (Ctrl + V). Cada linha vira <b>um QR Code</b>.</li>
+            <li>Clique em <b>Gerar QR Codes</b>.</li>
+          </ol>
+          Linhas em branco são ignoradas automaticamente.
+        </div>
+        <div class="field">
+          <label for="bulkInput">Lista de valores (um por linha)</label>
+          <textarea id="bulkInput" placeholder="Cole sua coluna aqui ou digite um valor por linha e aperte Enter&#10;Exemplo:&#10;Aluno 001&#10;Aluno 002&#10;Aluno 003"></textarea>
+          <span class="hint" id="bulkCount">0 linhas preenchidas</span>
+        </div>
+      </div>
+
+      <details class="opts">
+        <summary>⚙️ Opções avançadas (tamanho e formato)</summary>
+        <div class="opts-body row">
+          <div class="field">
+            <label for="qrSize">Tamanho do QR Code</label>
+            <select id="qrSize">
+              <option value="200">Pequeno (200 px)</option>
+              <option value="300" selected>Médio (300 px)</option>
+              <option value="500">Grande (500 px)</option>
+              <option value="800">Muito grande - impressão (800 px)</option>
+            </select>
+            <span class="hint">Vale para as imagens baixadas.</span>
+          </div>
+          <div class="field">
+            <label for="qrMargin">Margem branca ao redor</label>
+            <select id="qrMargin">
+              <option value="1">Fina</option>
+              <option value="2" selected>Normal</option>
+              <option value="4">Larga (recomendada p/ leitura)</option>
+            </select>
+          </div>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="btnGerar">✨ Gerar QR Codes</button>
+        <button type="button" class="btn btn-ghost" id="btnLimpar">🧹 Limpar tudo</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </section>
+
+    <section class="card">
+      <div class="result-head">
+        <div>
+          <h2>2. Seus QR Codes</h2>
+          <span class="count" id="contador">Nenhum QR Code gerado ainda.</span>
+        </div>
+        <button type="button" class="btn btn-success" id="downloadAll" style="display:none;">⬇️ Baixar todos (ZIP)</button>
+      </div>
+      <div class="qr-codes" id="qrCodesContainer">
+        <div class="empty">Os QR Codes aparecerão aqui depois que você clicar em <b>Gerar QR Codes</b>.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Por Wagner L. Rodrigues</footer>
 
   <script>
-    function generateQRCodes() {
-      const container = document.getElementById('qrCodesContainer');
-      const startNumber = parseInt(document.getElementById('startNumber').value);
-      const endNumber = parseInt(document.getElementById('endNumber').value);
-      const customValues = document.getElementById('customValues').value.split(',').map(v => v.trim());
-      const bulkInput = document.getElementById('bulkInput').value.split('\n').map(v => v.trim()).filter(v => v);
+    const MAX_QR = 500;
+    let modoAtual = 'sequencia';
+    let valoresGerados = [];
 
-      container.innerHTML = '';
-      const qrValues = [];
+    const $ = id => document.getElementById(id);
 
-      // Adiciona valores conforme preenchidos nos campos
-      if (customValues[0]) {
-        qrValues.push(...customValues);
-      }
-      if (!isNaN(startNumber) && !isNaN(endNumber) && startNumber <= endNumber) {
-        for (let i = startNumber; i <= endNumber; i++) {
-          qrValues.push(i.toString());
-        }
-      }
-      if (bulkInput.length > 0) {
-        qrValues.push(...bulkInput);
-      }
+    // Troca de abas
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        modoAtual = tab.dataset.mode;
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === tab));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        $('panel-' + modoAtual).classList.add('active');
+        mostrarMsg('');
+      });
+    });
 
-      if (qrValues.length === 0) {
-        alert('Please provide data in one of the input fields.');
+    $('bulkInput').addEventListener('input', () => {
+      const n = $('bulkInput').value.split('\n').filter(v => v.trim()).length;
+      $('bulkCount').textContent = n + (n === 1 ? ' linha preenchida' : ' linhas preenchidas');
+    });
+
+    $('btnGerar').addEventListener('click', gerarQRCodes);
+    $('btnLimpar').addEventListener('click', limparTudo);
+    $('downloadAll').addEventListener('click', baixarTodos);
+
+    function mostrarMsg(texto, tipo) {
+      const el = $('msg');
+      el.className = 'msg' + (texto ? ' ' + tipo : '');
+      el.textContent = texto;
+    }
+
+    function coletarValores() {
+      if (modoAtual === 'sequencia') {
+        const ini = parseInt($('startNumber').value, 10);
+        const fim = parseInt($('endNumber').value, 10);
+        const prefixo = $('prefix').value;
+        if (isNaN(ini) || isNaN(fim)) throw new Error('Preencha o primeiro e o último número.');
+        if (ini > fim) throw new Error('O primeiro número não pode ser maior que o último.');
+        const lista = [];
+        for (let i = ini; i <= fim; i++) lista.push(prefixo + i);
+        return lista;
+      }
+      if (modoAtual === 'personalizado') {
+        const lista = $('customValues').value.split(',').map(v => v.trim()).filter(Boolean);
+        if (!lista.length) throw new Error('Digite ao menos um valor, separando por vírgula.');
+        return lista;
+      }
+      const lista = $('bulkInput').value.split('\n').map(v => v.trim()).filter(Boolean);
+      if (!lista.length) throw new Error('Cole ou digite ao menos um valor (um por linha).');
+      return lista;
+    }
+
+    function nomeArquivo(valor, usados) {
+      let base = valor.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') || 'qrcode';
+      base = base.substring(0, 60);
+      let nome = base, n = 2;
+      while (usados.has(nome)) nome = base + '_' + n++;
+      usados.add(nome);
+      return nome;
+    }
+
+    function gerarQRCodes() {
+      let valores;
+      try {
+        valores = coletarValores();
+      } catch (e) {
+        mostrarMsg(e.message, 'error');
+        return;
+      }
+      if (valores.length > MAX_QR) {
+        mostrarMsg('Você pediu ' + valores.length + ' QR Codes. O limite por vez é ' + MAX_QR + '. Divida em lotes menores.', 'error');
         return;
       }
 
-      qrValues.forEach(value => {
-        const qrItem = document.createElement('div');
-        qrItem.className = 'qr-item';
+      const container = $('qrCodesContainer');
+      container.innerHTML = '';
+      valoresGerados = valores;
+      const margem = parseInt($('qrMargin').value, 10);
+
+      valores.forEach(valor => {
+        const item = document.createElement('div');
+        item.className = 'qr-item';
 
         const canvas = document.createElement('canvas');
-        QRCode.toCanvas(canvas, value, { width: 200, margin: 2 }, function (error) {
-          if (error) console.error(error);
+        QRCode.toCanvas(canvas, valor, { width: 200, margin: margem }, err => {
+          if (err) console.error(err);
         });
 
-        const label = document.createElement('p');
-        label.textContent = value;
-        label.style.marginTop = '10px';
-        label.style.fontSize = '14px';
-        label.style.textAlign = 'center';
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = valor;
 
-        qrItem.appendChild(canvas);
-        qrItem.appendChild(label);
-        container.appendChild(qrItem);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = '⬇️ Baixar PNG';
+        btn.addEventListener('click', async () => {
+          const url = await QRCode.toDataURL(valor, {
+            width: parseInt($('qrSize').value, 10), margin: margem
+          });
+          saveAs(url, nomeArquivo(valor, new Set()) + '.png');
+        });
+
+        item.append(canvas, label, btn);
+        container.appendChild(item);
       });
 
-      document.getElementById('downloadAll').style.display = 'inline-block';
+      $('contador').textContent = valores.length + (valores.length === 1 ? ' QR Code gerado' : ' QR Codes gerados');
+      $('downloadAll').style.display = 'inline-block';
+      mostrarMsg(valores.length + ' QR Code(s) gerado(s) com sucesso! Role a página para ver.', 'info');
+      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    async function downloadAllQRCodes() {
-      const zip = new JSZip();
-      const qrItems = document.querySelectorAll('.qr-item');
+    async function baixarTodos() {
+      if (!valoresGerados.length) return;
+      const btn = $('downloadAll');
+      const textoOriginal = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ Preparando ZIP...';
 
-      qrItems.forEach(qrItem => {
-        const canvas = qrItem.querySelector('canvas');
-        const label = qrItem.querySelector('p').textContent; // O texto do QR Code
-        const sanitizedFileName = label.replace(/[^a-z0-9]/gi, '_'); // Sanitiza o nome do arquivo
-        const dataURL = canvas.toDataURL();
-        const base64Data = dataURL.split(',')[1];
-        zip.file(`${sanitizedFileName}.jpg`, base64Data, { base64: true });
-      });
+      try {
+        const zip = new JSZip();
+        const usados = new Set();
+        const tamanho = parseInt($('qrSize').value, 10);
+        const margem = parseInt($('qrMargin').value, 10);
 
-      const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, 'All_QRCodes.zip');
+        for (const valor of valoresGerados) {
+          const dataURL = await QRCode.toDataURL(valor, { width: tamanho, margin: margem });
+          zip.file(nomeArquivo(valor, usados) + '.png', dataURL.split(',')[1], { base64: true });
+        }
+        const conteudo = await zip.generateAsync({ type: 'blob' });
+        saveAs(conteudo, 'QRCodes.zip');
+      } catch (e) {
+        mostrarMsg('Não foi possível criar o ZIP: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
+      }
+    }
+
+    function limparTudo() {
+      ['startNumber', 'endNumber', 'prefix', 'customValues', 'bulkInput'].forEach(id => $(id).value = '');
+      $('bulkCount').textContent = '0 linhas preenchidas';
+      $('qrCodesContainer').innerHTML = '<div class="empty">Os QR Codes aparecerão aqui depois que você clicar em <b>Gerar QR Codes</b>.</div>';
+      $('contador').textContent = 'Nenhum QR Code gerado ainda.';
+      $('downloadAll').style.display = 'none';
+      valoresGerados = [];
+      mostrarMsg('');
     }
   </script>
-  <title>By Wagner L. Rodrigues</title>
 </body>
 </html>
